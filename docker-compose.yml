@@ -1,0 +1,114 @@
+# 一键起全栈：docker compose up -d          （默认 mock 后端，零 GPU 依赖）
+# 本地真实推理：docker compose --profile local up -d
+# 生产并发推理：docker compose --profile prod up -d
+# 链路观测：    docker compose --profile obs  up -d
+
+services:
+  api:
+    build: .
+    image: jy-agent-platform:local
+    container_name: jy-agent-api
+    ports:
+      - "8080:8080"
+    environment:
+      # 推理后端：mock（默认，离线可跑）｜ ollama（本地离线）｜ vllm（生产并发）
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      CHAT_MODEL: ${CHAT_MODEL:-}
+      EMBED_MODEL: ${EMBED_MODEL:-}
+      # 检索：向量 + BM25 双路召回 → RRF 融合 → 重排
+      USE_HYBRID: "true"
+      USE_RERANK: "true"
+      RECALL_K: "20"
+      TOP_K: "5"
+      RRF_K: "60"
+      RERANK_METHOD: ${RERANK_METHOD:-heuristic}
+      # 拒答闸门：召回置信度不足时拒绝作答（0.30 取自金标集分离区间中部）
+      MIN_TOP_COVERAGE: ${MIN_TOP_COVERAGE:-0.30}
+      # 知识层级先验：L1 法规 > L2 准则 > L3 实务 > L4 内部数据
+      LAYER_PRIOR: "L1=1.00,L2=0.96,L3=0.90,L4=0.84"
+      # 治理：接口鉴权与限流
+      SERVICE_API_KEY: ${SERVICE_API_KEY:-}
+      RATE_LIMIT_PER_MIN: "60"
+      ENABLE_LANGFUSE: ${ENABLE_LANGFUSE:-false}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
+    volumes:
+      - ./data/knowledge:/app/data/knowledge:ro   # 知识库只读挂载
+      - ./data/workspace:/app/data/workspace      # 底稿工作区
+      - index-data:/app/data/index                # 索引持久化
+      - trace-data:/app/data/traces               # 链路日志持久化
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # 本地离线推理：解决「敏感数据不出机」的合规问题
+  ollama:
+    image: ollama/ollama:latest
+    container_name: jy-ollama
+    profiles: ["local"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"        # 常驻显存，避免每次请求重新加载权重
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "4"        # 单机并发（生产请换 vLLM）
+    restart: unless-stopped
+
+  # 生产级并发推理：PagedAttention + 连续批处理，解决「并发与吞吐」问题
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: jy-vllm
+    profiles: ["prod"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    environment:
+      HUGGING_FACE_HUB_OFFLINE: "0"
+    command:
+      - "--model=Qwen/Qwen3.5-9B-Instruct"
+      - "--served-model-name=qwen3.5-9b"
+      - "--max-model-len=16384"
+      - "--gpu-memory-utilization=0.85"
+      - "--max-num-seqs=64"          # 并发上限
+      - "--enable-prefix-caching"    # 复用系统提示词前缀，降低首 token 延迟
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # 链路观测：把 JSONL trace 汇总成可视化 trace（数据不出机可自建）
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: jy-langfuse
+    profiles: ["obs"]
+    ports:
+      - "3000:3000"
+    environment:
+      LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_ORG:-jy-audit}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_USER:-jy}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_EMAIL:-jy@example.com}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_PASSWORD:-change-me}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-lf-local-dev-secret}
+      LANGFUSE_SALT: ${LANGFUSE_SALT:-saltsalt}
+      LANGFUSE_SITE_URL: http://localhost:3000
+    volumes:
+      - langfuse-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  index-data:
+  trace-data:
+  ollama-models:
+  hf-cache:
+  langfuse-data:

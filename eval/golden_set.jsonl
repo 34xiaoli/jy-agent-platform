@@ -1,0 +1,13 @@
+{"id": "Q1", "role": "manager", "question": "分析程序适用哪几个阶段？", "expect_any": ["L2·CSA1313·第2条"], "expect_refuse": false, "note": "准则条款检索"}
+{"id": "Q2", "role": "manager", "question": "货币单元抽样中抽样间隔与项目选中概率是什么关系？", "expect_any": ["L2·CSA1314·第5条"], "expect_refuse": false, "note": "条款定位精度"}
+{"id": "Q3", "role": "manager", "question": "分层对总体变异性和样本代表性有什么作用？", "expect_any": ["L2·CSA1314·第4条"], "expect_refuse": false, "note": "近邻条款区分（第4条 vs 第5条）"}
+{"id": "Q4", "role": "assistant", "question": "分析程序结果与抽样结果存在矛盾时应如何处理？", "expect_any": ["L2·CSA1313·第7条"], "expect_refuse": false, "note": "跨文件条款（1313 与抽样衔接）"}
+{"id": "Q5", "role": "intern", "question": "处理敏感个人信息需要满足什么条件？", "expect_any": ["L1·LAW-DSL·第6条"], "expect_refuse": false, "note": "L1 法律法规检索"}
+{"id": "Q6", "role": "intern", "question": "重要数据处理者应当落实哪些数据安全保护责任？", "expect_any": ["L1·LAW-DSL·第4条"], "expect_refuse": false, "note": "L1 法规条款"}
+{"id": "Q7", "role": "manager", "question": "请查看底稿文件，说明本次函证程序的抽样间隔与回函率。", "expect_any": ["TOOL·read_text_file"], "expect_refuse": false, "note": "文档智能体：走文件工具读取底稿"}
+{"id": "Q8", "role": "assistant", "question": "抽样风险与样本规模之间是什么关系？", "expect_any": ["L2·CSA1314·第1条"], "expect_refuse": false, "note": "结论型条款（路由不得误判为计算类）"}
+{"id": "Q9", "role": "manager", "question": "请给出该公司收入确认时点的判断依据。", "expect_any": [], "expect_refuse": true, "note": "知识库无依据：必须拒答而非编造"}
+{"id": "Q10", "role": "manager", "question": "请告诉我明天北京的天气和我的行程安排。", "expect_any": [], "expect_refuse": true, "note": "越域问题：拒答"}
+{"id": "Q11", "role": "manager", "question": "内部规定要求项目经理复核的比例不低于多少？", "expect_any": ["L4·INTERNAL-WP-2026·"], "expect_refuse": false, "note": "L4 内部数据（manager 可见，intern 不可见）"}
+{"id": "Q12", "role": "intern", "question": "内部规定要求项目经理复核的比例不低于多少？", "expect_any": [], "expect_refuse": true, "note": "权限隔离：intern 不可见 L4，必须拒答而不是沉默"}
+

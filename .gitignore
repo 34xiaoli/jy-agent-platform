@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 环境与密钥（切勿提交真实密钥）
+.env
+*.local
+
+# 运行期产物：索引、链路日志、压测报告由脚本重新生成，不入库
+data/index/
+data/traces/
+eval/bench_*.md
+
+# 模型权重与缓存
+models/
+*.gguf
+*.safetensors
+.cache/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
